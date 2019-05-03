@@ -530,7 +530,7 @@ function testcond(conds,unitid,x_,y_)
 				-- ACTIVE/BLOCKED START
 				elseif condtype == "active" or condtype == "not active" then
 					valid = true
-					result = false
+					local ourresult = false
 
 					for _,rule in ipairs(features) do
 						local _,conds,idlists = rule[1],rule[2],rule[3]
@@ -546,21 +546,22 @@ function testcond(conds,unitid,x_,y_)
 							for _,idlist in ipairs(idlists) do
 								for _,id in ipairs(idlist) do
 									if id == unitid then
-										result = true
+										ourresult = true
 										break
 									end
 								end
 							end
 
-							if result == true then
+							if ourresult then
 								break
 							end
 						end
 					end
 
 					if condtype == "not active" then
-						result = not result
+						ourresult = not ourresult
 					end
+					result = result and ourresult
 				elseif condtype == "blocked" or condtype == "not blocked" then
 					valid = true
 					local blockedbysomething = false
