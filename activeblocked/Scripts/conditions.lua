@@ -591,10 +591,11 @@ function testcond(conds,unitid,x_,y_)
 						end
 					end
 
-					result = blockedbysomething and not otherwiseactive
+					local ourresult = blockedbysomething and not otherwiseactive
 					if condtype == "not blocked" then
-						result = not result
+						ourresult = not result
 					end
+					result = result and ourresult
 				-- ACTIVE/BLOCKED END
 				end
 			end
