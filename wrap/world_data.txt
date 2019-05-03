@@ -1,0 +1,7 @@
+[general]
+start=2level
+name=wrap and portal
+
+[levels]
+levelid=20
+

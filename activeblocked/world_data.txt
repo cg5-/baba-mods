@@ -1,0 +1,7 @@
+[levels]
+levelid=7
+
+[general]
+name=active and blocked
+start=2level
+

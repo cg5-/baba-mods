@@ -1,0 +1,7 @@
+[levels]
+levelid=8
+
+[general]
+name=if2
+start=2level
+
