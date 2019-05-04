@@ -44,6 +44,34 @@ function mod.load(dir)
 		grid = {11, 1},
 		layer = 20,
 	}
+
+	tileslist["object122"] = {
+		name = "text_yoda",
+		sprite = "text_yoda",
+		sprite_in_root = false,
+		unittype = "text",
+		tiling = -1,
+		type = 2,
+		colour = {5, 1},
+		active = {5, 3},
+		tile = {2, 12},
+		grid = {11, 2},
+		layer = 20,
+	}
+
+	tileslist["object123"] = {
+		name = "text_caveman",
+		sprite = "text_caveman",
+		sprite_in_root = false,
+		unittype = "text",
+		tiling = -1,
+		type = 2,
+		colour = {0, 2},
+		active = {0, 3},
+		tile = {3, 12},
+		grid = {11, 3},
+		layer = 20,
+	}
 end
 
 function mod.unload(dir)

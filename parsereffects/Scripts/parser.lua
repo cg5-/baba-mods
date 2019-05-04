@@ -27,7 +27,7 @@ function parser.printState(state)
 	print(printString)
 end
 
--- Consume the first token and return its name. Add its ID to unitIdList.
+-- Consume the first token and return its name and type. Add its ID to unitIdList.
 local function consume(state, unitIdList)
 	if state.consumed >= #state.tokens then
 		return nil
@@ -35,7 +35,7 @@ local function consume(state, unitIdList)
 	state.consumed = state.consumed + 1
 	local token = state.tokens[state.consumed]
 	table.insert(unitIdList, token.unitId)
-	return token.name
+	return token.name, token.type
 end
 
 local function contains(needle, haystack)
@@ -70,6 +70,82 @@ local function checkFirstNonNotToken(state, startingIdx, types)
 end
 
 function parser.rule(state)
+	local success, targets, conds, condUnitIds, predicates = parser.englishRule(state)
+	if success then
+		return true, targets, conds, condUnitIds, predicates
+	end
+
+	if featureindex["yoda"] ~= nil then
+		state.consumed = 0
+		success, targets, conds, condUnitIds, predicates = parser.yodaRule(state)
+		-- Only allow the rule if every consumed token IS YODA
+		if success then
+			for i = 1, state.consumed do
+				for _, unitId in ipairs(state.tokens[i].unitId) do
+					local unit = mmf.newObject(unitId)
+					if not hasfeature(getname(unit), "is", "yoda", unitId) then
+						success = false
+						break
+					end
+				end
+
+				if not success then
+					break
+				end
+			end
+
+			if success then
+				return true, targets, conds, condUnitIds, predicates
+			end
+		end
+	end
+
+	if featureindex["caveman"] ~= nil then
+		state.consumed = 0
+		success, targets, conds, condUnitIds, predicates = parser.cavemanRule(state)
+		-- Only allow the rule if every consumed token IS YODA
+		if success then
+			for i = 1, state.consumed do
+				for _, unitId in ipairs(state.tokens[i].unitId) do
+					local unit = mmf.newObject(unitId)
+					if not hasfeature(getname(unit), "is", "caveman", unitId) then
+						success = false
+						break
+					end
+				end
+
+				if not success then
+					break
+				end
+			end
+
+			if success then
+				return true, targets, conds, condUnitIds, predicates
+			end
+		end
+	end
+
+	return false
+end
+
+local function getVerbParamTypes(verb)
+	local realName = unitreference["text_" .. verb]
+	local wValues = changes[realName]
+	if wValues == nil then
+		wValues = tileslist[realName]
+	end
+
+	if wValues == nil then
+		return NOUN
+	end
+
+	if wValues.operatortype == "verb_all" then
+		return {NOUN, PROP}
+	end
+	return NOUN
+end
+
+function parser.englishRule(state)
 	local done, targets, conds, condUnitIds = parser.subject(state)
 	if done then
 		return false
@@ -79,6 +155,61 @@ function parser.rule(state)
 
 	if #predicates == 0 then
 		return false
+	end
+
+	return true, targets, conds, condUnitIds, predicates
+end
+
+function parser.yodaRule(state)
+	-- We don't know what the allowed verb param types are yet, because we don't know
+	-- what the verb is. For now, allow everything, then we will check them later on.
+	local done, effects = parser.andSeparatedListWithSeparateIdLists(state, {NOUN, PROP})
+
+	if done then
+		return false
+	end
+
+	local done, targets, conds, condUnitIds = parser.subject(state)
+	if done then
+		return false
+	end
+
+	-- Yoda rule can only have one verb.
+	if not checkToken(state, 1, VERB) then
+		return false
+	end
+
+	local verbIds = {}
+	local verb = consume(state, verbIds)
+	local paramTypes = getVerbParamTypes(verb)
+	local predicates = {}
+
+	for _, data in ipairs(effects) do
+		local effect, unitIds, type = data[1], data[2], data[3]
+		-- Finally check the verb params.
+		if not contains(type, paramTypes) then
+			return false
+		end
+		table.insert(predicates, {verb, effect, activemod.concat(unitIds, verbIds)})
+	end
+
+	return true, targets, conds, condUnitIds, predicates
+end
+
+function parser.cavemanRule(state)
+	local done, targets, conds, condUnitIds = parser.subject(state)
+	if done then
+		return false
+	end
+
+	local done, effects = parser.andSeparatedListWithSeparateIdLists(state, {NOUN, PROP})
+	if done then
+		return false
+	end
+
+	local predicates = {}
+	for _, data in ipairs(effects) do
+		table.insert(predicates, {"is", data[1], data[2]})
 	end
 
 	return true, targets, conds, condUnitIds, predicates
@@ -148,21 +279,27 @@ function parser.andSeparatedList(state, types, unitIdList)
 	end
 end
 
--- As above, but returns array of {name, unitIdList} with separate ID lists for each parsed item.
+-- As above, but returns array of {name, unitIdList, type} with separate ID lists for each parsed item.
 function parser.andSeparatedListWithSeparateIdLists(state, types)
 	if not checkFirstNonNotToken(state, 1, types) then
 		return true, {}
 	end
+
 	local unitIdList = {}
-	local result = {{parser.nots(state, unitIdList) .. consume(state, unitIdList), unitIdList}}
+	local prefix = parser.nots(state, unitIdList)
+	local item, itemType = consume(state, unitIdList)
+	local result = {{prefix .. item, unitIdList, itemType}}
 
 	while true do
 		if not (checkToken(state, 1, AND) and checkFirstNonNotToken(state, 2, types)) then
 			return false, result
 		end
+
 		unitIdList = {}
 		consume(state, unitIdList) -- AND
-		table.insert(result, {parser.nots(state, unitIdList) .. consume(state, unitIdList), unitIdList})
+		prefix = parser.nots(state, unitIdList)
+		item, itemType = consume(state, unitIdList)
+		table.insert(result, {prefix .. item, unitIdList, itemType})
 	end
 end
 
@@ -203,23 +340,6 @@ function parser.postConds(state, unitIdList)
 
 		table.insert(postConds, {prefix .. cond, params})
 	end
-end
-
-local function getVerbParamTypes(verb)
-	local realName = unitreference["text_" .. verb]
-	local wValues = changes[realName]
-	if wValues == nil then
-		wValues = tileslist[realName]
-	end
-
-	if wValues == nil then
-		return NOUN
-	end
-
-	if wValues.operatortype == "verb_all" then
-		return {NOUN, PROP}
-	end
-	return NOUN
 end
 
 function parser.predicates(state)

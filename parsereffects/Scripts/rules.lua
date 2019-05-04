@@ -69,6 +69,22 @@ local function getcodeaffectingfeatures()
 		end
 	end
 
+	if pendingfeatures.featureindex["yoda"] ~= nil then
+		for _, feature in ipairs(pendingfeatures.featureindex["yoda"]) do
+			if words[feature[1][1]] ~= nil and feature[1][2] == "is" and feature[1][3] == "yoda" then
+				table.insert(result, feature)
+			end
+		end
+	end
+
+	if pendingfeatures.featureindex["caveman"] ~= nil then
+		for _, feature in ipairs(pendingfeatures.featureindex["caveman"]) do
+			if words[feature[1][1]] ~= nil and feature[1][2] == "is" and feature[1][3] == "caveman" then
+				table.insert(result, feature)
+			end
+		end
+	end
+
 	return result
 end
 
@@ -410,6 +426,11 @@ function docode(firstwords)
 						-- e.g. IS BABA IS YOU, we failed, consuming no tokens, try again starting from BABA.
 
 						local newFirstWordIndex = parserState.consumed
+						if not success then
+							-- If we weren't successful with the last parse then instead just try again with the first one missing,
+							-- in case we consumed some tokens which are important for the next rule.
+							newFirstWordIndex = 1
+						end
 						if newFirstWordIndex == 0 and tokens[1].isLetters and #tokens[1].unitId > 1 then
 							-- If we started with letters and didn't even manage to get through that, try again
 							-- with the first letter missing. This will ensure things like X Y Z B A B A IS YOU will eventually
