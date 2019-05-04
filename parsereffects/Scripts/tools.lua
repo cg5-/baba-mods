@@ -1,5 +1,49 @@
 
--- Modify writerules to support multiple pre-conds properly
+local function join(array, func, separator)
+	local result = ""
+	for _, elem in ipairs(array) do
+		local text = func(elem)
+		if text ~= nil and text ~= "" then
+			if result == "" then
+				result = text
+			else
+				result = result .. separator .. text
+			end
+		end
+	end
+	return result
+end
+
+local function identity(x)
+	return x
+end
+
+local function condtostring(cond)
+	local text = cond[1]
+	if (cond[2] ~= nil and #cond[2] > 0) then
+		text = text .. " " .. join(cond[2], identity, " & ")
+	end
+	return text
+end
+
+local function subjecttostring(targets, conds)
+	local preconds = join(conds, function (cond)
+		if #cond[2] == 0 then
+			return condtostring(cond)
+		end
+	end, " & ")
+
+	local nouns = join(targets, identity, " & ")
+
+	local postconds = join(conds, function (cond)
+		if #cond[2] > 0 and cond[1] ~= "if" and cond[2] ~= "not if" then
+			return condtostring(cond, false)
+		end
+	end, " & ")
+
+	return join({preconds, nouns, postconds}, identity, " ")
+end
+
 function writerules(parent,name,x_,y_)
 	local basex = x_
 	local basey = y_
@@ -17,57 +61,20 @@ function writerules(parent,name,x_,y_)
 	local columnwidth = math.min(screenw - tilesize * 2, columns * tilesize * 10) / columns
 	
 	if (texthide == nil) then
-		for i,rules in ipairs(visualfeatures) do
+		for i,rule in ipairs(visualfeatures) do
 			local currcolumn = math.floor((i - 1) / linelimit) - (columns * 0.5)
 			
 			x = basex + columnwidth * currcolumn + columnwidth * 0.5
 			y = basey + (((i - 1) % linelimit) + 1) * tilesize * 0.8
 			
-			local text = ""
-			local preconds = ""
-			local rule = rules[1]
-			
-			text = text .. rule[1] .. " "
-			
-			local conds = rules[2]
-			if (#conds > 0) then
-				for a,cond in ipairs(conds) do
-					local middlecond = true
-					
-					if (cond[2] == nil) or ((cond[2] ~= nil) and (#cond[2] == 0)) then
-						middlecond = false
-					end
-					
-					if middlecond then
-						text = text .. cond[1] .. " "
-						
-						if (cond[2] ~= nil) then
-							if (#cond[2] > 0) then
-								for c,d in ipairs(cond[2]) do
-									text = text .. d .. " "
-									
-									if (#cond[2] > 1) and (c ~= #cond[2]) then
-										text = text .. "& "
-									end
-								end
-							end
-						end
-						
-						if (a < #conds) then
-							text = text .. "& "
-						end
-					else
-						if preconds == "" then
-							preconds = cond[1] .. " "
-						else
-							preconds = preconds .. "& " .. cond[1] .. " "
-						end
-					end
-				end
+			local subject = subjecttostring({rule[1][1]}, rule[2])
+			if rule.language == "caveman" and rule[1][2] == "is" then
+				text = subject .. " " .. rule[1][3] .. "!"
+			elseif rule.language == "yoda" then
+				text = rule[1][3] .. ", " .. subject .. " " .. rule[1][2]
+			else
+				text = subject .. " " .. rule[1][2] .. " " .. rule[1][3]
 			end
-			
-			text = preconds .. text .. rule[2] .. " " .. rule[3]
-			
 			writetext(text,0,x,y,name,true,2,true)
 		end
 	end

@@ -396,7 +396,7 @@ function docode(firstwords)
 
 						local parserState = {consumed = 0, tokens = tokens}
 
-						local success, targets, conds, condUnitIds, predicates = activemod.parser.rule(parserState)
+						local success, targets, conds, condUnitIds, predicates, language = activemod.parser.rule(parserState)
 
 						if success then
 							-- Find all of the features that this rule will generate. This is the cartesian product of the targets and the predicates.
@@ -413,7 +413,7 @@ function docode(firstwords)
 
 									-- It is necessary to take a shallow copy of conds here, because addoption and postrules will
 									-- mess with these and we don't want them to affect more rules than they should.
-									addoption({target, verb, effect}, activemod.concat({}, conds), combinedUnitIds)
+									addoption({target, verb, effect}, activemod.concat({}, conds), combinedUnitIds, nil, nil, language)
 								end
 							end
 						end
@@ -483,7 +483,7 @@ function codecheck(unitid,ox,oy)
 	return result
 end
 
-function addoption(option,conds_,ids,visible,notrule)
+function addoption(option,conds_,ids,visible,notrule,language_)
 	--MF_alert(option[1] .. ", " .. option[2] .. ", " .. option[3])
 	
 	local visual = true
@@ -492,6 +492,8 @@ function addoption(option,conds_,ids,visible,notrule)
 		visual = visible
 	end
 	
+	local language = language_ or "english"
+
 	local conds = {}
 	
 	if (conds_ ~= nil) then
@@ -501,7 +503,7 @@ function addoption(option,conds_,ids,visible,notrule)
 	end
 	
 	if (#option == 3) then
-		local rule = {option,conds,ids}
+		local rule = {option, conds, ids, language=language}
 		table.insert(pendingfeatures.features, rule)
 		local target = option[1]
 		local verb = option[2]
@@ -1098,7 +1100,7 @@ function copyrule(rule)
 		end
 	end
 	
-	local newrule = {newbaserule,newconds,newids}
+	local newrule = {newbaserule, newconds, newids, language = rule.language}
 	
 	return newrule
 end

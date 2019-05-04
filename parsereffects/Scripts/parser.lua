@@ -72,7 +72,7 @@ end
 function parser.rule(state)
 	local success, targets, conds, condUnitIds, predicates = parser.englishRule(state)
 	if success then
-		return true, targets, conds, condUnitIds, predicates
+		return true, targets, conds, condUnitIds, predicates, "english"
 	end
 
 	if featureindex["yoda"] ~= nil then
@@ -95,7 +95,7 @@ function parser.rule(state)
 			end
 
 			if success then
-				return true, targets, conds, condUnitIds, predicates
+				return true, targets, conds, condUnitIds, predicates, "yoda"
 			end
 		end
 	end
@@ -120,7 +120,7 @@ function parser.rule(state)
 			end
 
 			if success then
-				return true, targets, conds, condUnitIds, predicates
+				return true, targets, conds, condUnitIds, predicates, "caveman"
 			end
 		end
 	end
