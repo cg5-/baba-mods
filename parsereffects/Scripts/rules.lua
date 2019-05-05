@@ -61,7 +61,7 @@ local function getcodeaffectingfeatures()
 		end
 	end
 
-	for _, name in ipairs({"slant", "yoda", "caveman", "false"}) do
+	for _, name in ipairs({"slant", "yoda", "caveman", "false", "clickbait"}) do
 		if pendingfeatures.featureindex[name] ~= nil then
 			for _, feature in ipairs(pendingfeatures.featureindex[name]) do
 				if words[feature[1][1]] ~= nil and feature[1][2] == "is" and feature[1][3] == name then
@@ -413,11 +413,7 @@ function docode(firstwords)
 										end
 
 										if extras.isFalse then
-											if string.sub(effect, 1, 3) == "not" then
-												effect = string.sub(effect, 5)
-											else
-												effect = "not " .. effect
-											end
+											effect = activemod.invertEffect(effect)
 										end
 									end
 

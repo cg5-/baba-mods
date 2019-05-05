@@ -72,6 +72,8 @@ function writerules(parent,name,x_,y_)
 				text = subject .. " " .. rule[1][3] .. "!"
 			elseif rule.language == "yoda" then
 				text = rule[1][3] .. ", " .. subject .. " " .. rule[1][2]
+			elseif rule.language == "clickbait" then
+				text = rule[1][2] .. " " .. subject .. " " .. activemod.invertEffect(rule[1][3]) .. "? the answer may surprise you! (it isn't)"
 			else
 				text = subject .. " " .. rule[1][2] .. " " .. rule[1][3]
 			end

@@ -11,6 +11,14 @@ function mod.concat(array, ...)
 	return array
 end
 
+function mod.invertEffect(effect)
+	if string.sub(effect, 1, 3) == "not" then
+		return string.sub(effect, 5)
+	else
+		return "not " .. effect
+	end
+end
+
 function mod.load(dir)
 	loadscript(dir .. "rules")
 	loadscript(dir .. "tools")
@@ -84,6 +92,35 @@ function mod.load(dir)
 		active = {2, 2},
 		tile = {4, 12},
 		grid = {11, 4},
+		layer = 20,
+	}
+
+	tileslist["object125"] = {
+		name = "text_clickbait",
+		sprite = "text_clickbait",
+		sprite_in_root = false,
+		unittype = "text",
+		tiling = -1,
+		type = 2,
+		colour = {2, 1},
+		active = {2, 2},
+		tile = {5, 12},
+		grid = {11, 5},
+		layer = 20,
+	}
+
+	-- Overwrite text_rose since otherwise we're past 6 tiles
+	tileslist["object037"] = {
+		name = "text_?",
+		sprite = "text_question",
+		sprite_in_root = false,
+		unittype = "text",
+		tiling = -1,
+		type = 20,
+		colour = {0, 2},
+		active = {0, 3},
+		tile = {7, 3},
+		grid = {10, 10},
 		layer = 20,
 	}
 end

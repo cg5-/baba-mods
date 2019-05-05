@@ -10,6 +10,7 @@ local NOT = 4
 local LETTER = 5
 local AND = 6
 local POSTCOND = 7
+local QUESTION_MARK = 20
 
 function parser.printState(state)
 	local printString = ""
@@ -75,52 +76,36 @@ function parser.rule(state)
 		return true, targets, conds, condUnitIds, predicates, nil
 	end
 
-	if featureindex["yoda"] ~= nil then
-		state.consumed = 0
-		success, targets, conds, condUnitIds, predicates = parser.yodaRule(state)
-		-- Only allow the rule if every consumed token IS YODA
-		if success then
-			for i = 1, state.consumed do
-				for _, unitId in ipairs(state.tokens[i].unitId) do
-					local unit = mmf.newObject(unitId)
-					if not hasfeature(getname(unit), "is", "yoda", unitId) then
-						success = false
+	local alternateLanguages = {
+		{"yoda", parser.yodaRule},
+		{"clickbait", parser.clickbaitRule},
+		{"caveman", parser.cavemanRule}
+	}
+
+	for _, data in ipairs(alternateLanguages) do
+		local languageName, parserFunction = data[1], data[2]
+		if featureindex[languageName] ~= nil then
+			state.consumed = 0
+			success, targets, conds, condUnitIds, predicates = parserFunction(state)
+			-- Only allow the rule if every consumed token IS that language
+			if success then
+				for i = 1, state.consumed do
+					for _, unitId in ipairs(state.tokens[i].unitId) do
+						local unit = mmf.newObject(unitId)
+						if not hasfeature(getname(unit), "is", languageName, unitId) then
+							success = false
+							break
+						end
+					end
+
+					if not success then
 						break
 					end
 				end
 
-				if not success then
-					break
+				if success then
+					return true, targets, conds, condUnitIds, predicates, languageName
 				end
-			end
-
-			if success then
-				return true, targets, conds, condUnitIds, predicates, "yoda"
-			end
-		end
-	end
-
-	if featureindex["caveman"] ~= nil then
-		state.consumed = 0
-		success, targets, conds, condUnitIds, predicates = parser.cavemanRule(state)
-		-- Only allow the rule if every consumed token IS YODA
-		if success then
-			for i = 1, state.consumed do
-				for _, unitId in ipairs(state.tokens[i].unitId) do
-					local unit = mmf.newObject(unitId)
-					if not hasfeature(getname(unit), "is", "caveman", unitId) then
-						success = false
-						break
-					end
-				end
-
-				if not success then
-					break
-				end
-			end
-
-			if success then
-				return true, targets, conds, condUnitIds, predicates, "caveman"
 			end
 		end
 	end
@@ -210,6 +195,40 @@ function parser.cavemanRule(state)
 	local predicates = {}
 	for _, data in ipairs(effects) do
 		table.insert(predicates, {"is", data[1], data[2]})
+	end
+
+	return true, targets, conds, condUnitIds, predicates
+end
+
+function parser.clickbaitRule(state)
+	-- Do we allow verbs other than IS? The answer may surprise you! (We don't, because "has baba keke?" is not good grammar.)
+	if state.tokens[state.consumed + 1] == nil or state.tokens[state.consumed + 1].name ~= "is" then
+		return false
+	end
+
+	local globalIds = {}
+	consume(state, globalIds)
+
+	local done, targets, conds, condUnitIds = parser.subject(state)
+	if done then
+		return false
+	end
+
+	local done, effects = parser.andSeparatedListWithSeparateIdLists(state, {NOUN, PROP})
+	if done then
+		return false
+	end
+
+	if not checkToken(state, 1, QUESTION_MARK) then
+		return false
+	end
+
+	consume(state, globalIds)
+
+	local predicates = {}
+	for _, data in ipairs(effects) do
+		local effect, idList = data[1], data[2]
+		table.insert(predicates, {"is", activemod.invertEffect(effect), activemod.concat(idList, globalIds)})
 	end
 
 	return true, targets, conds, condUnitIds, predicates
