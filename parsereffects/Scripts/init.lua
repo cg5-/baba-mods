@@ -112,8 +112,8 @@ function mod.load(dir)
 	-- Overwrite text_rose since otherwise we're past 6 tiles
 	tileslist["object037"] = {
 		name = "text_?",
-		sprite = "text_question",
-		sprite_in_root = false,
+		sprite = "what",
+		sprite_in_root = true,
 		unittype = "text",
 		tiling = -1,
 		type = 20,
