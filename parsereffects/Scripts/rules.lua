@@ -61,26 +61,12 @@ local function getcodeaffectingfeatures()
 		end
 	end
 
-	if pendingfeatures.featureindex["slant"] ~= nil then
-		for _, feature in ipairs(pendingfeatures.featureindex["slant"]) do
-			if words[feature[1][1]] ~= nil and feature[1][2] == "is" and feature[1][3] == "slant" then
-				table.insert(result, feature)
-			end
-		end
-	end
-
-	if pendingfeatures.featureindex["yoda"] ~= nil then
-		for _, feature in ipairs(pendingfeatures.featureindex["yoda"]) do
-			if words[feature[1][1]] ~= nil and feature[1][2] == "is" and feature[1][3] == "yoda" then
-				table.insert(result, feature)
-			end
-		end
-	end
-
-	if pendingfeatures.featureindex["caveman"] ~= nil then
-		for _, feature in ipairs(pendingfeatures.featureindex["caveman"]) do
-			if words[feature[1][1]] ~= nil and feature[1][2] == "is" and feature[1][3] == "caveman" then
-				table.insert(result, feature)
+	for _, name in ipairs({"slant", "yoda", "caveman", "false"}) do
+		if pendingfeatures.featureindex[name] ~= nil then
+			for _, feature in ipairs(pendingfeatures.featureindex[name]) do
+				if words[feature[1][1]] ~= nil and feature[1][2] == "is" and feature[1][3] == name then
+					table.insert(result, feature)
+				end
 			end
 		end
 	end
@@ -411,9 +397,33 @@ function docode(firstwords)
 									-- This is how the game can cross out only part of a rule if only some of it was blocked.
 									local combinedUnitIds = activemod.concat({}, targetUnitIds, condUnitIds, predicateUnitIds)
 
+									local extras = {language = language}
+									if featureindex["false"] ~= nil then
+										for _, unitIdList in ipairs(combinedUnitIds) do
+											for _, unitId in ipairs(unitIdList) do
+												local unit = mmf.newObject(unitId)
+												if hasfeature(getname(unit), "is", "false", unitId) then
+													extras.isFalse = true
+													break
+												end
+											end
+											if extras.isFalse then
+												break
+											end
+										end
+
+										if extras.isFalse then
+											if string.sub(effect, 1, 3) == "not" then
+												effect = string.sub(effect, 5)
+											else
+												effect = "not " .. effect
+											end
+										end
+									end
+
 									-- It is necessary to take a shallow copy of conds here, because addoption and postrules will
 									-- mess with these and we don't want them to affect more rules than they should.
-									addoption({target, verb, effect}, activemod.concat({}, conds), combinedUnitIds, nil, nil, language)
+									addoption({target, verb, effect}, activemod.concat({}, conds), combinedUnitIds, nil, nil, extras)
 								end
 							end
 						end
@@ -483,7 +493,7 @@ function codecheck(unitid,ox,oy)
 	return result
 end
 
-function addoption(option,conds_,ids,visible,notrule,language_)
+function addoption(option,conds_,ids,visible,notrule,extras_)
 	--MF_alert(option[1] .. ", " .. option[2] .. ", " .. option[3])
 	
 	local visual = true
@@ -492,7 +502,7 @@ function addoption(option,conds_,ids,visible,notrule,language_)
 		visual = visible
 	end
 	
-	local language = language_ or "english"
+	local extras = extras_ or {}
 
 	local conds = {}
 	
@@ -503,7 +513,10 @@ function addoption(option,conds_,ids,visible,notrule,language_)
 	end
 	
 	if (#option == 3) then
-		local rule = {option, conds, ids, language=language}
+		local rule = {option, conds, ids}
+		for key, value in pairs(extras) do
+			rule[key] = value
+		end
 		table.insert(pendingfeatures.features, rule)
 		local target = option[1]
 		local verb = option[2]
@@ -637,6 +650,7 @@ end
 function doruleeffects()
 	local newruleids = {}
 	local ruleeffectlimiter = {}
+	local alreadytrue = {}
 	local playrulesound = false
 	local rulesoundshort = ""
 
@@ -644,6 +658,7 @@ function doruleeffects()
 		local rule = rules[1]
 		local conds = rules[2]
 		local ids = rules[3]
+		local isFalse = rules.isFalse
 		
 		if (ids ~= nil) then
 			local idlist = {}
@@ -661,8 +676,11 @@ function doruleeffects()
 						if (b ~= 0) then
 							local bunit = mmf.newObject(b)
 							
-							if (bunit.strings[UNITTYPE] == "text") then
+							if isFalse and not alreadytrue[b] then
+								MF_setcolour(b,2,2)
+							elseif bunit.strings[UNITTYPE] == "text" then
 								setcolour(b,"active")
+								alreadytrue[b] = 1
 							end
 							newruleids[b] = 1
 							
@@ -1100,7 +1118,12 @@ function copyrule(rule)
 		end
 	end
 	
-	local newrule = {newbaserule, newconds, newids, language = rule.language}
+	local newrule = {newbaserule, newconds, newids}
+	for key, value in pairs(rule) do
+		if type(key) ~= "number" then
+			newrule[key] = value
+		end
+	end
 	
 	return newrule
 end

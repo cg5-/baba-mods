@@ -72,6 +72,20 @@ function mod.load(dir)
 		grid = {11, 3},
 		layer = 20,
 	}
+
+	tileslist["object124"] = {
+		name = "text_false",
+		sprite = "text_false",
+		sprite_in_root = false,
+		unittype = "text",
+		tiling = -1,
+		type = 2,
+		colour = {2, 1},
+		active = {2, 2},
+		tile = {4, 12},
+		grid = {11, 4},
+		layer = 20,
+	}
 end
 
 function mod.unload(dir)
